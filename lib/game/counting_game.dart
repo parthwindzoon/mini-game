@@ -313,6 +313,7 @@ class _ScrollableCountingGameState extends State<ScrollableCountingGame> {
   int targetCount = 0;
   String currentEmoji = '🎈';
   List<String> currentObjects = [];
+  List<int> answerOptions = [];
   bool showResult = false;
   String resultMessage = '';
   Color resultColor = Colors.green;
@@ -328,10 +329,25 @@ class _ScrollableCountingGameState extends State<ScrollableCountingGame> {
 
   void _newRound() {
     setState(() {
-      targetCount = random.nextInt(15) + 1; // 1-15 objects
+      targetCount = random.nextInt(10) + 1; // 1-10 objects
       currentEmoji = objectEmojis[random.nextInt(objectEmojis.length)];
       currentObjects = List.generate(targetCount, (index) => currentEmoji);
       showResult = false;
+
+      // Generate 4 multiple choice options (1 correct, 3 wrong)
+      answerOptions.clear();
+      answerOptions.add(targetCount); // Correct answer
+
+      // Add 3 wrong answers
+      while (answerOptions.length < 4) {
+        int wrongAnswer = random.nextInt(10) + 1; // 1-10
+        if (!answerOptions.contains(wrongAnswer)) {
+          answerOptions.add(wrongAnswer);
+        }
+      }
+
+      // Shuffle the options
+      answerOptions.shuffle();
     });
   }
 
@@ -340,7 +356,7 @@ class _ScrollableCountingGameState extends State<ScrollableCountingGame> {
       if (selectedNumber == targetCount) {
         score += 10;
         resultMessage = 'Correct! There are $targetCount objects! +10';
-        resultColor = Colors.white; // Changed to white
+        resultColor = Colors.white; // White as requested
       } else {
         resultMessage = 'Try again! Count carefully.';
         resultColor = Colors.red;
@@ -471,23 +487,26 @@ class _ScrollableCountingGameState extends State<ScrollableCountingGame> {
                   ),
                 ),
 
-              // Number buttons - Scrollable horizontally
+              // Multiple Choice Answers (4 options)
               Padding(
                 padding: const EdgeInsets.all(20),
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: List.generate(20, (index) {
-                      final number = index + 1;
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 5),
-                        child: _CountingNumberButton(
-                          number: number,
-                          onPressed: () => _onNumberSelected(number),
-                        ),
-                      );
-                    }),
+                child: GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 15,
+                    mainAxisSpacing: 15,
+                    childAspectRatio: 1.5,
                   ),
+                  itemCount: 4,
+                  itemBuilder: (context, index) {
+                    return _CountingMultipleChoiceButton(
+                      number: answerOptions[index],
+                      onPressed: () => _onNumberSelected(answerOptions[index]),
+                      isCorrect: answerOptions[index] == targetCount,
+                    );
+                  },
                 ),
               ),
             ],
@@ -498,20 +517,22 @@ class _ScrollableCountingGameState extends State<ScrollableCountingGame> {
   }
 }
 
-class _CountingNumberButton extends StatefulWidget {
+class _CountingMultipleChoiceButton extends StatefulWidget {
   final int number;
   final VoidCallback onPressed;
+  final bool isCorrect;
 
-  const _CountingNumberButton({
+  const _CountingMultipleChoiceButton({
     required this.number,
     required this.onPressed,
+    required this.isCorrect,
   });
 
   @override
-  State<_CountingNumberButton> createState() => _CountingNumberButtonState();
+  State<_CountingMultipleChoiceButton> createState() => _CountingMultipleChoiceButtonState();
 }
 
-class _CountingNumberButtonState extends State<_CountingNumberButton>
+class _CountingMultipleChoiceButtonState extends State<_CountingMultipleChoiceButton>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
@@ -538,6 +559,16 @@ class _CountingNumberButtonState extends State<_CountingNumberButton>
     super.dispose();
   }
 
+  Color _getButtonColor() {
+    final colors = [
+      const Color(0xFF3498DB), // Blue
+      const Color(0xFFE74C3C), // Red
+      const Color(0xFFF39C12), // Orange
+      const Color(0xFF9B59B6), // Purple
+    ];
+    return colors[widget.number % colors.length];
+  }
+
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
@@ -553,17 +584,15 @@ class _CountingNumberButtonState extends State<_CountingNumberButton>
             },
             onTapCancel: () => _animationController.reverse(),
             child: Container(
-              width: 50,
-              height: 50,
               decoration: BoxDecoration(
-                color: const Color(0xFF3498DB),
-                borderRadius: BorderRadius.circular(25),
-                border: Border.all(color: Colors.white, width: 2),
+                color: _getButtonColor(),
+                borderRadius: BorderRadius.circular(15),
+                border: Border.all(color: Colors.white, width: 3),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black26,
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
+                    blurRadius: 6,
+                    offset: const Offset(0, 3),
                   ),
                 ],
               ),
@@ -572,8 +601,15 @@ class _CountingNumberButtonState extends State<_CountingNumberButton>
                   widget.number.toString(),
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 20,
+                    fontSize: 32,
                     fontWeight: FontWeight.bold,
+                    shadows: [
+                      Shadow(
+                        color: Colors.black26,
+                        offset: Offset(2, 2),
+                        blurRadius: 4,
+                      ),
+                    ],
                   ),
                 ),
               ),
