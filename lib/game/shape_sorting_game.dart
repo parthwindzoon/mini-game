@@ -4,12 +4,13 @@ import 'package:flame/events.dart';
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 
-class ShapeSortingGame extends FlameGame with TapCallbacks, HasCollisionDetection {
+class ShapeSortingGame extends FlameGame with HasCollisionDetection, DragCallbacks {
   late List<ShapeTarget> targets;
   late List<DraggableShape> shapes;
   int score = 0;
   late TextComponent scoreText;
   late TextComponent instructionText;
+  DraggableShape? draggedShape;
 
   @override
   Color backgroundColor() => const Color(0xFF87CEEB);
@@ -28,7 +29,7 @@ class ShapeSortingGame extends FlameGame with TapCallbacks, HasCollisionDetectio
           fontWeight: FontWeight.bold,
         ),
       ),
-      position: Vector2(size.x / 2, 50),
+      position: Vector2(size.x / 2, 60),
       anchor: Anchor.center,
     );
     add(instructionText);
@@ -92,6 +93,34 @@ class ShapeSortingGame extends FlameGame with TapCallbacks, HasCollisionDetectio
       );
       shapes.add(shape);
       add(shape);
+    }
+  }
+
+  @override
+  void onDragStart(DragStartEvent event) {
+    final point = event.localPosition;
+    // Find which shape was touched
+    for (final shape in shapes) {
+      if (shape.containsPoint(point)) {
+        draggedShape = shape;
+        shape.onDragStart();
+        break;
+      }
+    }
+  }
+
+  @override
+  void onDragUpdate(DragUpdateEvent event) {
+    if (draggedShape != null) {
+      draggedShape!.position += event.localDelta;
+    }
+  }
+
+  @override
+  void onDragEnd(DragEndEvent event) {
+    if (draggedShape != null) {
+      draggedShape!.onDragEnd();
+      draggedShape = null;
     }
   }
 
@@ -184,7 +213,7 @@ class ShapeTarget extends PositionComponent {
   }
 }
 
-class DraggableShape extends PositionComponent with TapCallbacks {
+class DraggableShape extends PositionComponent {
   final ShapeType shapeType;
   final ShapeSortingGame game;
   late Vector2 originalPosition;
@@ -212,10 +241,26 @@ class DraggableShape extends PositionComponent with TapCallbacks {
 
     final center = size / 2;
 
+    // Add shadow if being dragged
+    if (isDragging) {
+      final shadowPaint = Paint()
+        ..color = Colors.black26
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
+      canvas.save();
+      canvas.translate(2, 2);
+      _drawShape(canvas, shadowPaint, center);
+      canvas.restore();
+    }
+
+    // Draw main shape
+    _drawShape(canvas, paint, center);
+    _drawShape(canvas, strokePaint, center);
+  }
+
+  void _drawShape(Canvas canvas, Paint paint, Vector2 center) {
     switch (shapeType) {
       case ShapeType.circle:
         canvas.drawCircle(center.toOffset(), size.x / 2 - 2, paint);
-        canvas.drawCircle(center.toOffset(), size.x / 2 - 2, strokePaint);
         break;
       case ShapeType.square:
         final rect = Rect.fromCenter(
@@ -224,7 +269,6 @@ class DraggableShape extends PositionComponent with TapCallbacks {
           height: size.y - 4,
         );
         canvas.drawRect(rect, paint);
-        canvas.drawRect(rect, strokePaint);
         break;
       case ShapeType.triangle:
         final path = Path();
@@ -233,7 +277,6 @@ class DraggableShape extends PositionComponent with TapCallbacks {
         path.lineTo(size.x - 2, size.y - 2);
         path.close();
         canvas.drawPath(path, paint);
-        canvas.drawPath(path, strokePaint);
         break;
     }
   }
@@ -249,50 +292,27 @@ class DraggableShape extends PositionComponent with TapCallbacks {
     }
   }
 
-  @override
-  void onTapDown(TapDownEvent event) {
+  void onDragStart() {
     isDragging = true;
     priority = 1; // Bring to front when dragging
   }
 
-  @override
-  void onTapUp(TapUpEvent event) {
-    if (isDragging) {
-      isDragging = false;
-      priority = 0;
+  void onDragEnd() {
+    isDragging = false;
+    priority = 0;
 
-      // Check if dropped on any target
-      bool matched = false;
-      for (final target in game.targets) {
-        if (_isOverlapping(target)) {
-          game.checkMatch(this, target);
-          matched = true;
-          break;
-        }
-      }
-
-      if (!matched) {
-        returnToOriginalPosition();
+    // Check if dropped on any target
+    bool matched = false;
+    for (final target in game.targets) {
+      if (_isOverlapping(target)) {
+        game.checkMatch(this, target);
+        matched = true;
+        break;
       }
     }
-  }
 
-  @override
-  void onTapCancel(TapCancelEvent event) {
-    if (isDragging) {
-      isDragging = false;
-      priority = 0;
+    if (!matched) {
       returnToOriginalPosition();
-    }
-  }
-
-  @override
-  void update(double dt) {
-    super.update(dt);
-
-    if (isDragging && game.camera.viewport.containsPoint(game.camera.globalToLocal(position))) {
-      // Follow cursor/finger position during drag
-      // This is a simplified implementation
     }
   }
 
@@ -302,7 +322,12 @@ class DraggableShape extends PositionComponent with TapCallbacks {
   }
 
   void returnToOriginalPosition() {
-    // Animate back to original position
+    // Return shape to original position
     position = originalPosition.clone();
+  }
+
+  bool containsPoint(Vector2 point) {
+    final localPoint = point - position;
+    return localPoint.x.abs() <= size.x / 2 && localPoint.y.abs() <= size.y / 2;
   }
 }

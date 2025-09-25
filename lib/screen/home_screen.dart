@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flame/game.dart';
+import 'package:mini_game/game/baloon_pop_game.dart';
 import '../game/alphabet_game.dart';
+import '../game/alphabet_tracing_game.dart';
 import '../game/color_matching_game.dart';
 import '../game/counting_game.dart';
 import '../game/number_learning_game.dart';
 import '../game/number_memory_game.dart';
+import '../game/number_tracing_game.dart';
 import '../game/pattern_game.dart';
 import '../game/shape_sorting_game.dart';
 import '../game/simple_math_game.dart';
@@ -29,41 +32,6 @@ class HomeScreen extends StatelessWidget {
         child: SafeArea(
           child: Column(
             children: [
-              // Header
-              // Container(
-              //   padding: const EdgeInsets.all(20),
-              //   child: Column(
-              //     children: [
-              //       const Text(
-              //         '🌟 Fun Learning Games 🌟',
-              //         style: TextStyle(
-              //           fontSize: 28,
-              //           fontWeight: FontWeight.bold,
-              //           color: Colors.white,
-              //           shadows: [
-              //             Shadow(
-              //               blurRadius: 10.0,
-              //               color: Colors.black26,
-              //               offset: Offset(2.0, 2.0),
-              //             ),
-              //           ],
-              //         ),
-              //         textAlign: TextAlign.center,
-              //       ),
-              //       const SizedBox(height: 10),
-              //       const Text(
-              //         'Choose a game to start learning!',
-              //         style: TextStyle(
-              //           fontSize: 16,
-              //           color: Colors.white70,
-              //           fontWeight: FontWeight.w500,
-              //         ),
-              //         textAlign: TextAlign.center,
-              //       ),
-              //     ],
-              //   ),
-              // ),
-
               // Game Grid
               Expanded(
                 child: Padding(
@@ -83,7 +51,25 @@ class HomeScreen extends StatelessWidget {
                         title: 'Number\nLearning',
                         icon: '🔢',
                         color: const Color(0xFF4ECDC4),
-                        onTap: () => _navigateToGame(context, NumberLearningGame()),
+                        onTap: () => _navigateToScrollableNumberGame(context),
+                      ),
+                      GameCard(
+                        title: 'Alphabet\nRecognition',
+                        icon: '🔍',
+                        color: const Color(0xFF6A4C93),
+                        onTap: () => _navigateToAlphabetRecognition(context),
+                      ),
+                      GameCard(
+                        title: 'Number\nRecognition',
+                        icon: '🔍',
+                        color: const Color(0xFF4CAF50),
+                        onTap: () => _navigateToNumberRecognition(context),
+                      ),
+                      GameCard(
+                        title: 'Pop the\nBalloons',
+                        icon: '🎈',
+                        color: const Color(0xFF87CEEB),
+                        onTap: () => _navigateToGame(context, BalloonPopGame()),
                       ),
                       GameCard(
                         title: 'Shape\nSorting',
@@ -107,7 +93,7 @@ class HomeScreen extends StatelessWidget {
                         title: 'Counting\nFun',
                         icon: '🔢',
                         color: const Color(0xFFFFC048),
-                        onTap: () => _navigateToGame(context, CountingGame()),
+                        onTap: () => _navigateToScrollableCountingGame(context),
                       ),
                       GameCard(
                         title: 'Simple\nMath',
@@ -125,19 +111,6 @@ class HomeScreen extends StatelessWidget {
                   ),
                 ),
               ),
-
-              // Footer
-              // Container(
-              //   padding: const EdgeInsets.all(16),
-              //   child: const Text(
-              //     'Have fun learning! 🚀',
-              //     style: TextStyle(
-              //       fontSize: 14,
-              //       color: Colors.white70,
-              //       fontWeight: FontWeight.w400,
-              //     ),
-              //   ),
-              // ),
             ],
           ),
         ),
@@ -150,6 +123,42 @@ class HomeScreen extends StatelessWidget {
       context,
       MaterialPageRoute(
         builder: (context) => GameScreen(game: game),
+      ),
+    );
+  }
+
+  void _navigateToScrollableNumberGame(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const ScrollableNumberGame(),
+      ),
+    );
+  }
+
+  void _navigateToScrollableCountingGame(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const ScrollableCountingGame(),
+      ),
+    );
+  }
+
+  void _navigateToAlphabetRecognition(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const AlphabetTracingGame(),
+      ),
+    );
+  }
+
+  void _navigateToNumberRecognition(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const NumberTracingGame(),
       ),
     );
   }

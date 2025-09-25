@@ -11,9 +11,13 @@ class PatternGame extends FlameGame with TapCallbacks {
   Color missingColor = Colors.red;
   int missingIndex = 0;
   int score = 0;
+  int correctAnswers = 0;
+  int currentLevel = 1;
   late TextComponent scoreText;
+  late TextComponent levelText;
   late TextComponent instructionText;
 
+  // Expanded color palette
   final List<Color> availableColors = [
     Colors.red,
     Colors.blue,
@@ -21,6 +25,16 @@ class PatternGame extends FlameGame with TapCallbacks {
     Colors.yellow,
     Colors.purple,
     Colors.orange,
+    Colors.pink,
+    Colors.cyan,
+    Colors.brown,
+    Colors.lime,
+    Colors.indigo,
+    Colors.teal,
+    Colors.deepOrange,
+    Colors.lightGreen,
+    Colors.amber,
+    Colors.deepPurple,
   ];
 
   final Random random = Random();
@@ -62,19 +76,35 @@ class PatternGame extends FlameGame with TapCallbacks {
     );
     add(scoreText);
 
+    // Add level text
+    levelText = TextComponent(
+      text: 'Level: $currentLevel',
+      textRenderer: TextPaint(
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      position: Vector2(20, 30),
+      anchor: Anchor.topLeft,
+    );
+    add(levelText);
+
     _setupChoiceButtons();
     _newPattern();
   }
 
   void _setupChoiceButtons() {
-    const buttonSize = 50.0;
-    const spacing = 15.0;
-    final totalWidth = 3 * buttonSize + 2 * spacing;
+    const buttonSize = 45.0;
+    const spacing = 12.0;
+    final buttonCount = _getChoiceButtonCount();
+    final totalWidth = buttonCount * buttonSize + (buttonCount - 1) * spacing;
     final startX = (size.x - totalWidth) / 2;
     final buttonY = size.y - 100;
 
-    // Create 3 choice buttons
-    for (int i = 0; i < 3; i++) {
+    // Create choice buttons based on difficulty
+    for (int i = 0; i < buttonCount; i++) {
       final button = ChoiceButton(
         color: Colors.red, // Will be set in _newPattern()
         game: this,
@@ -87,6 +117,13 @@ class PatternGame extends FlameGame with TapCallbacks {
     }
   }
 
+  int _getChoiceButtonCount() {
+    // More choices as difficulty increases
+    if (currentLevel <= 2) return 3;
+    if (currentLevel <= 4) return 4;
+    return 5;
+  }
+
   void _newPattern() {
     // Clear existing pattern blocks
     for (final block in patternBlocks) {
@@ -94,42 +131,150 @@ class PatternGame extends FlameGame with TapCallbacks {
     }
     patternBlocks.clear();
 
-    // Generate a simple repeating pattern (length 4-6)
-    final patternLength = random.nextInt(3) + 4; // 4-6 blocks
+    // Update level based on correct answers
+    final newLevel = (correctAnswers ~/ 10) + 1;
+    if (newLevel != currentLevel) {
+      currentLevel = newLevel;
+      levelText.text = 'Level: $currentLevel';
+
+      // Show level up message
+      final levelUpText = TextComponent(
+        text: 'Level Up! $currentLevel',
+        textRenderer: TextPaint(
+          style: const TextStyle(
+            color: Colors.yellow,
+            fontSize: 28,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        position: Vector2(size.x / 2, 120),
+        anchor: Anchor.center,
+      );
+      add(levelUpText);
+
+      Future.delayed(const Duration(seconds: 1), () {
+        levelUpText.removeFromParent();
+      });
+    }
+
+    // Generate pattern based on difficulty level
+    _generatePatternByLevel();
+    _createPatternBlocks();
+    _updateChoiceButtons();
+  }
+
+  void _generatePatternByLevel() {
     currentPattern.clear();
 
-    // Create a simple AB or ABC pattern
-    final basePattern = <Color>[];
-    final patternType = random.nextInt(3);
+    switch (currentLevel) {
+      case 1:
+        _generateSimplePattern(2, 4, 5); // AB pattern, 4-5 blocks
+        break;
+      case 2:
+        _generateSimplePattern(3, 5, 6); // ABC pattern, 5-6 blocks
+        break;
+      case 3:
+        _generateComplexPattern(3, 6, 7); // ABCABC pattern, 6-7 blocks
+        break;
+      case 4:
+        _generateAlternatingPattern(4, 6, 8); // ABCDAB pattern, 6-8 blocks
+        break;
+      default:
+        _generateAdvancedPattern(4, 7, 9); // Complex patterns, 7-9 blocks
+    }
+  }
 
-    if (patternType == 0) {
-      // AB pattern: RED-BLUE-RED-BLUE...
-      basePattern.addAll([availableColors[0], availableColors[1]]);
-    } else if (patternType == 1) {
-      // ABC pattern: RED-BLUE-GREEN-RED-BLUE-GREEN...
-      basePattern.addAll([availableColors[0], availableColors[1], availableColors[2]]);
-    } else {
-      // ABB pattern: RED-BLUE-BLUE-RED-BLUE-BLUE...
-      basePattern.addAll([availableColors[0], availableColors[1], availableColors[1]]);
+  void _generateSimplePattern(int colorCount, int minLength, int maxLength) {
+    final patternLength = random.nextInt(maxLength - minLength + 1) + minLength;
+    final basePattern = <Color>[];
+
+    // Randomly select colors from the full palette instead of just first few
+    final shuffledColors = List<Color>.from(availableColors)..shuffle();
+    for (int i = 0; i < colorCount; i++) {
+      basePattern.add(shuffledColors[i]);
     }
 
     // Fill the current pattern by repeating the base pattern
     for (int i = 0; i < patternLength; i++) {
       currentPattern.add(basePattern[i % basePattern.length]);
     }
+  }
 
+  void _generateComplexPattern(int colorCount, int minLength, int maxLength) {
+    final patternLength = random.nextInt(maxLength - minLength + 1) + minLength;
+    final patterns = [
+      [0, 1, 2, 0, 1, 2], // ABCABC
+      [0, 1, 1, 0, 1, 1], // ABBAAB
+      [0, 1, 2, 1, 0, 1], // ABCBAB
+    ];
+
+    final selectedPattern = patterns[random.nextInt(patterns.length)];
+    // Randomly select from full color palette
+    final shuffledColors = List<Color>.from(availableColors)..shuffle();
+    final colors = shuffledColors.take(colorCount).toList();
+
+    for (int i = 0; i < patternLength && i < selectedPattern.length * 2; i++) {
+      final colorIndex = selectedPattern[i % selectedPattern.length];
+      currentPattern.add(colors[colorIndex % colors.length]);
+    }
+  }
+
+  void _generateAlternatingPattern(int colorCount, int minLength, int maxLength) {
+    final patternLength = random.nextInt(maxLength - minLength + 1) + minLength;
+    // Randomly select from full color palette
+    final shuffledColors = List<Color>.from(availableColors)..shuffle();
+    final colors = shuffledColors.take(colorCount).toList();
+
+    // Create more complex alternating patterns
+    final patternTypes = [
+      [0, 1, 2, 3, 0, 1], // ABCDAB
+      [0, 1, 0, 2, 0, 1], // ABABCAB
+      [0, 1, 2, 0, 3, 1], // ABCADB
+    ];
+
+    final selectedType = patternTypes[random.nextInt(patternTypes.length)];
+
+    for (int i = 0; i < patternLength; i++) {
+      final colorIndex = selectedType[i % selectedType.length];
+      currentPattern.add(colors[colorIndex % colors.length]);
+    }
+  }
+
+  void _generateAdvancedPattern(int colorCount, int minLength, int maxLength) {
+    final patternLength = random.nextInt(maxLength - minLength + 1) + minLength;
+    // Randomly select from full color palette
+    final shuffledColors = List<Color>.from(availableColors)..shuffle();
+    final colors = shuffledColors.take(colorCount + 2).toList();
+
+    // Most complex patterns
+    final advancedPatterns = [
+      [0, 1, 2, 3, 4, 0, 1], // ABCDEAB
+      [0, 1, 0, 2, 1, 0, 3], // ABABCAD
+      [0, 1, 2, 1, 3, 2, 1], // ABCBDCB
+      [0, 1, 1, 2, 2, 3, 3], // ABBCCDD
+    ];
+
+    final selectedPattern = advancedPatterns[random.nextInt(advancedPatterns.length)];
+
+    for (int i = 0; i < patternLength; i++) {
+      final colorIndex = selectedPattern[i % selectedPattern.length];
+      currentPattern.add(colors[colorIndex % colors.length]);
+    }
+  }
+
+  void _createPatternBlocks() {
     // Choose which block to make missing (not the first one)
-    missingIndex = random.nextInt(patternLength - 1) + 1;
+    missingIndex = random.nextInt(currentPattern.length - 1) + 1;
     missingColor = currentPattern[missingIndex];
 
     // Create pattern blocks
-    const blockSize = 50.0;
-    const spacing = 10.0;
-    final totalWidth = patternLength * blockSize + (patternLength - 1) * spacing;
+    const blockSize = 45.0;
+    const spacing = 8.0;
+    final totalWidth = currentPattern.length * blockSize + (currentPattern.length - 1) * spacing;
     final startX = (size.x - totalWidth) / 2;
     final blockY = 200.0;
 
-    for (int i = 0; i < patternLength; i++) {
+    for (int i = 0; i < currentPattern.length; i++) {
       final block = PatternBlock(
         color: i == missingIndex ? null : currentPattern[i],
         isMissing: i == missingIndex,
@@ -140,15 +285,42 @@ class PatternGame extends FlameGame with TapCallbacks {
       patternBlocks.add(block);
       add(block);
     }
+  }
 
-    // Setup choice buttons with correct answer and 2 wrong answers
+  void _updateChoiceButtons() {
+    // Clear existing buttons
+    for (final button in choiceButtons) {
+      button.removeFromParent();
+    }
+    choiceButtons.clear();
+
+    // Setup new buttons with current difficulty
+    _setupChoiceButtons();
+
+    // Setup choice buttons with correct answer and wrong answers
+    final choiceCount = _getChoiceButtonCount();
     List<Color> choices = [missingColor];
 
-    // Add wrong choices
-    while (choices.length < 3) {
-      final wrongColor = availableColors[random.nextInt(availableColors.length)];
+    // Add wrong choices from available colors
+    final availableWrongColors = availableColors.where((color) =>
+    color != missingColor && !currentPattern.contains(color)).toList();
+
+    while (choices.length < choiceCount && availableWrongColors.isNotEmpty) {
+      final wrongColor = availableWrongColors[random.nextInt(availableWrongColors.length)];
       if (!choices.contains(wrongColor)) {
         choices.add(wrongColor);
+        availableWrongColors.remove(wrongColor);
+      }
+    }
+
+    // Fill with colors from pattern if needed
+    if (choices.length < choiceCount) {
+      final patternColors = currentPattern.toSet().toList();
+      for (final color in patternColors) {
+        if (choices.length >= choiceCount) break;
+        if (!choices.contains(color)) {
+          choices.add(color);
+        }
       }
     }
 
@@ -156,7 +328,7 @@ class PatternGame extends FlameGame with TapCallbacks {
     choices.shuffle();
 
     // Update choice buttons
-    for (int i = 0; i < choiceButtons.length; i++) {
+    for (int i = 0; i < choiceButtons.length && i < choices.length; i++) {
       choiceButtons[i].updateColor(choices[i]);
     }
   }
@@ -164,7 +336,9 @@ class PatternGame extends FlameGame with TapCallbacks {
   void onColorSelected(Color selectedColor) {
     if (selectedColor == missingColor) {
       // Correct choice!
-      score += 20;
+      correctAnswers++;
+      final points = 10 + (currentLevel * 5); // More points for higher levels
+      score += points;
       scoreText.text = 'Score: $score';
 
       // Fill in the missing block
@@ -172,15 +346,15 @@ class PatternGame extends FlameGame with TapCallbacks {
 
       // Show success feedback
       final successText = TextComponent(
-        text: 'Perfect! Pattern complete! +20',
+        text: 'Perfect! Pattern complete! +$points',
         textRenderer: TextPaint(
           style: const TextStyle(
-            color: Colors.green,
+            color: Colors.white, // Changed to white as requested
             fontSize: 20,
             fontWeight: FontWeight.bold,
           ),
         ),
-        position: Vector2(size.x / 2, 300),
+        position: Vector2(size.x / 2, 280),
         anchor: Anchor.center,
       );
       add(successText);
@@ -195,7 +369,7 @@ class PatternGame extends FlameGame with TapCallbacks {
         _newPattern();
       });
     } else {
-      // Wrong choice
+      // Wrong choice - don't change the pattern, let them try again
       final wrongText = TextComponent(
         text: 'Look at the pattern more carefully!',
         textRenderer: TextPaint(
@@ -205,12 +379,12 @@ class PatternGame extends FlameGame with TapCallbacks {
             fontWeight: FontWeight.bold,
           ),
         ),
-        position: Vector2(size.x / 2, 300),
+        position: Vector2(size.x / 2, 280),
         anchor: Anchor.center,
       );
       add(wrongText);
 
-      Future.delayed(const Duration(seconds: 1, milliseconds: 500), () {
+      Future.delayed(const Duration(seconds: 1), () {
         wrongText.removeFromParent();
       });
     }

@@ -299,3 +299,288 @@ class NumberButton extends PositionComponent with TapCallbacks {
     isPressed = false;
   }
 }
+
+// Scrollable version of the counting game using Flutter widgets
+class ScrollableCountingGame extends StatefulWidget {
+  const ScrollableCountingGame({super.key});
+
+  @override
+  State<ScrollableCountingGame> createState() => _ScrollableCountingGameState();
+}
+
+class _ScrollableCountingGameState extends State<ScrollableCountingGame> {
+  int score = 0;
+  int targetCount = 0;
+  String currentEmoji = '🎈';
+  List<String> currentObjects = [];
+  bool showResult = false;
+  String resultMessage = '';
+  Color resultColor = Colors.green;
+
+  final List<String> objectEmojis = ['🎈', '⭐', '🎄', '🌸', '🦋', '🎾', '🍎', '🐰'];
+  final Random random = Random();
+
+  @override
+  void initState() {
+    super.initState();
+    _newRound();
+  }
+
+  void _newRound() {
+    setState(() {
+      targetCount = random.nextInt(15) + 1; // 1-15 objects
+      currentEmoji = objectEmojis[random.nextInt(objectEmojis.length)];
+      currentObjects = List.generate(targetCount, (index) => currentEmoji);
+      showResult = false;
+    });
+  }
+
+  void _onNumberSelected(int selectedNumber) {
+    setState(() {
+      if (selectedNumber == targetCount) {
+        score += 10;
+        resultMessage = 'Correct! There are $targetCount objects! +10';
+        resultColor = Colors.white; // Changed to white
+      } else {
+        resultMessage = 'Try again! Count carefully.';
+        resultColor = Colors.red;
+      }
+      showResult = true;
+    });
+
+    if (selectedNumber == targetCount) {
+      // Only generate new round if answer is correct
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted) {
+          _newRound();
+        }
+      });
+    } else {
+      // Hide wrong answer message after shorter delay, but keep same question
+      Future.delayed(const Duration(seconds: 1), () {
+        if (mounted) {
+          setState(() {
+            showResult = false;
+          });
+        }
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ),
+      extendBodyBehindAppBar: true,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF2ECC71), Color(0xFF27AE60)],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Header
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    const Text(
+                      'COUNTING FUN',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    const Text(
+                      'Count the objects and select the right number!',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      'Score: $score',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Objects area - Scrollable
+              Expanded(
+                flex: 2,
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 20),
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: SingleChildScrollView(
+                    child: Wrap(
+                      spacing: 15,
+                      runSpacing: 15,
+                      alignment: WrapAlignment.center,
+                      children: currentObjects.map((emoji) =>
+                          Container(
+                            width: 50,
+                            height: 50,
+                            child: Text(
+                              emoji,
+                              style: const TextStyle(fontSize: 40),
+                            ),
+                          ),
+                      ).toList(),
+                    ),
+                  ),
+                ),
+              ),
+
+              // Result message
+              if (showResult)
+                Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Text(
+                    resultMessage,
+                    style: TextStyle(
+                      color: resultColor,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+
+              // Number buttons - Scrollable horizontally
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: List.generate(20, (index) {
+                      final number = index + 1;
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 5),
+                        child: _CountingNumberButton(
+                          number: number,
+                          onPressed: () => _onNumberSelected(number),
+                        ),
+                      );
+                    }),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CountingNumberButton extends StatefulWidget {
+  final int number;
+  final VoidCallback onPressed;
+
+  const _CountingNumberButton({
+    required this.number,
+    required this.onPressed,
+  });
+
+  @override
+  State<_CountingNumberButton> createState() => _CountingNumberButtonState();
+}
+
+class _CountingNumberButtonState extends State<_CountingNumberButton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _animationController;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 150),
+      vsync: this,
+    );
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 1.1,
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeOut,
+    ));
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _scaleAnimation,
+      builder: (context, child) {
+        return Transform.scale(
+          scale: _scaleAnimation.value,
+          child: GestureDetector(
+            onTapDown: (_) => _animationController.forward(),
+            onTapUp: (_) {
+              _animationController.reverse();
+              widget.onPressed();
+            },
+            onTapCancel: () => _animationController.reverse(),
+            child: Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                color: const Color(0xFF3498DB),
+                borderRadius: BorderRadius.circular(25),
+                border: Border.all(color: Colors.white, width: 2),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black26,
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Center(
+                child: Text(
+                  widget.number.toString(),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
