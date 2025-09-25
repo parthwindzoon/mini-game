@@ -20,6 +20,8 @@ class MiniGameApp extends StatelessWidget {
       ),
       home: const HomeScreen(),
       debugShowCheckedModeBanner: false,
+
+
     );
   }
 }
